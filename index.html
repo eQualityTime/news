@@ -69,18 +69,19 @@
   <button id="settingsToggle" onclick="toggleSettings()">⚙ Settings</button>
   <div id="settings">
     <label>Number of people in community: <input type="number" id="nodeCount" value="200"></label>
-    <label>Chance that someone believes a lie: <input type="number" step="0.01" id="redChance" value="0.1"></label>
+    <label>Chance that someone believes a lie: <input type="number" step="0.01" id="redChance" value="0.4"></label>
   </div>
 
   <div id="controls">
     <img src="ProjectReal.png" alt="Project Real Logo" class="logo">
     <p><strong>So you've created your own bit of fake news</strong></p>
-    <label class="checkbox-label"><input type="checkbox" id="emotive"> Is it emotive?</label>
-    <label class="checkbox-label"><input type="checkbox" id="expert"> Does it pretend you are an expert?</label>
+    <div style="margin-bottom: 15px; text-align: left;"><label for="emotive">Is it emotive?</label><br><input type="range" id="emotive" min="1" max="5" value="1" oninput="this.nextElementSibling.value = this.value"><output>1</output></div>
+    <div style="margin-bottom: 15px; text-align: left;"><label for="expert">Does it pretend you are an expert?</label><br><input type="range" id="expert" min="1" max="5" value="1" oninput="this.nextElementSibling.value = this.value"><output>1</output></div>
     <button onclick="startSimulation(); document.getElementById('controls').style.display='none';">Start</button>
   </div>
 
   <div id="chartTitle">Simulating Spread of Fake News</div>
+  <div id="timer" style="text-align:center; font-size:1em; margin:10px 0;"></div>
   <div id="network"></div>
 
   <script>
@@ -95,9 +96,10 @@
       clearInterval(intervalId);
 
       const nodeCount = parseInt(document.getElementById('nodeCount').value);
-      let redChance = parseFloat(document.getElementById('redChance').value);
-      if (document.getElementById('emotive').checked) redChance += 0.2;
-      if (document.getElementById('expert').checked) redChance += 0.2;
+      let redChance = 0.1;
+      redChance += (parseInt(document.getElementById('emotive').value) - 1) * 0.05;
+      redChance += (parseInt(document.getElementById('expert').value) - 1) * 0.05;
+      
 
       const nodes = [];
       const edges = [];
@@ -156,6 +158,18 @@
       const initial = Math.floor(Math.random() * nodeCount);
       nodeSet.update({ id: initial, color: 'red' });
 
+      const startTime = Date.now();
+      const timerElement = document.getElementById('timer');
+      timerElement.textContent = 'Elapsed: 0.0s';
+      let elapsed = 0;
+      const timerInterval = setInterval(() => {
+        elapsed += 0.25;
+        const totalMinutes = Math.floor(elapsed * 60);
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minutes = totalMinutes % 60;
+        timerElement.textContent = `Elapsed: ${days} days, ${hours} hours, and ${minutes} minutes`;
+      }, 250);
       intervalId = setInterval(() => {
         const currentNodes = nodeSet.get();
         const newStates = new Map();
@@ -178,6 +192,19 @@
 
         for (const [id, color] of newStates.entries()) {
           nodeSet.update({ id, color });
+        }
+
+        const totalRed = nodeSet.get().filter(n => n.color === 'red').length;
+        const total = nodeSet.length;
+        if (totalRed === total) {
+          clearInterval(intervalId);
+          clearInterval(timerInterval);
+          const endTime = Date.now();
+          const durationMinutes = Math.floor((endTime - startTime) / 1000 * 60);
+          const days = Math.floor(durationMinutes / (24 * 60));
+          const hours = Math.floor((durationMinutes % (24 * 60)) / 60);
+          const minutes = durationMinutes % 60;
+          document.getElementById('timer').textContent = `Full penetration in ${days} days, ${hours} hours, and ${minutes} minutes.`;
         }
       }, 1000);
     }

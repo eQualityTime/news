@@ -6,8 +6,15 @@
   <style>
     #network {
       width: 100vw;
-      height: 90vh;
+      height: 85vh;
       border: 1px solid lightgray;
+      z-index: 0;
+    }
+    #chartTitle {
+      text-align: center;
+      font-size: 1.5em;
+      font-weight: bold;
+      margin: 10px 0;
     }
     #controls {
       position: fixed;
@@ -19,38 +26,78 @@
       border: 1px solid #ccc;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       z-index: 1000;
+      text-align: center;
+    }
+    #settings {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      display: none;
+    }
+    #settingsToggle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 1001;
     }
     label, input {
-      display: block;
       margin: 5px 0;
     }
-    #network {
-      z-index: 0;
+    label.checkbox-label {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    img.logo {
+      max-width: 150px;
+      margin-bottom: 15px;
     }
   </style>
 </head>
 <body>
+  <button id="settingsToggle" onclick="toggleSettings()">⚙ Settings</button>
+  <div id="settings">
+    <label>Number of people in community: <input type="number" id="nodeCount" value="200"></label>
+    <label>Chance that someone believes a lie: <input type="number" step="0.01" id="redChance" value="0.1"></label>
+  </div>
+
   <div id="controls">
-    <label>Number of people in community:: <input type="number" id="nodeCount" value="200"></label>
-    <label>Chance that someone believes a lie: <input type="number" step="0.01" id="redChance" value="0.4"></label>
-    <label>Chance someone checks what they hear on for themselves<input type="number" step="0.01" id="debunkChance" value="0.2"></label>
-    <label>Chance someone will educate a friend <input type="number" step="0.01" id="blueToWhiteChance" value="0.3"></label>
-    <label>Chance that someone will change their mind: <input type="number" step="0.01" id="blueToRedChance" value="0.1"></label>
+    <img src="ProjectReal.png" alt="Project Real Logo" class="logo">
+    <p><strong>So you've created your own bit of fake news</strong></p>
+    <label class="checkbox-label"><input type="checkbox" id="emotive"> Is it emotive?</label>
+    <label class="checkbox-label"><input type="checkbox" id="expert"> Does it pretend you are an expert?</label>
     <button onclick="startSimulation(); document.getElementById('controls').style.display='none';">Start</button>
   </div>
+
+  <div id="chartTitle">Simulating Spread of Fake News</div>
   <div id="network"></div>
 
   <script>
     let nodeSet, edgeSet, connections, intervalId;
 
+    function toggleSettings() {
+      const settings = document.getElementById('settings');
+      settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+    }
+
     function startSimulation() {
       clearInterval(intervalId);
 
       const nodeCount = parseInt(document.getElementById('nodeCount').value);
-      const redChance = parseFloat(document.getElementById('redChance').value);
-      const debunkChance = parseFloat(document.getElementById('debunkChance').value);
-      const blueToWhiteChance = parseFloat(document.getElementById('blueToWhiteChance').value);
-      const blueToRedChance = parseFloat(document.getElementById('blueToRedChance').value);
+      let redChance = parseFloat(document.getElementById('redChance').value);
+      if (document.getElementById('emotive').checked) redChance += 0.2;
+      if (document.getElementById('expert').checked) redChance += 0.2;
 
       const nodes = [];
       const edges = [];
@@ -116,25 +163,15 @@
         for (const node of currentNodes) {
           const neighbors = connections.get(node.id);
           let redInfluence = false;
-          let blueInfluence = false;
 
           for (const n of neighbors) {
             const neighbor = nodeSet.get(n);
             if (neighbor.color === 'red') redInfluence = true;
-            if (neighbor.color === 'blue') blueInfluence = true;
           }
 
           if (node.color === 'lightgray') {
             if (redInfluence && Math.random() < redChance) {
               newStates.set(node.id, 'red');
-            } else if (redInfluence && Math.random() < debunkChance) {
-              newStates.set(node.id, 'blue');
-            } else if (blueInfluence && Math.random() < blueToWhiteChance) {
-              newStates.set(node.id, 'blue');
-            }
-          } else if (node.color === 'red') {
-            if (blueInfluence && Math.random() < blueToRedChance) {
-              newStates.set(node.id, 'blue');
             }
           }
         }
@@ -147,3 +184,4 @@
   </script>
 </body>
 </html>
+

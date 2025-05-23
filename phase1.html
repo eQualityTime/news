@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fake vs Real News Simulation</title>
+  <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
+  <style>
+    #network {
+      width: 100vw;
+      height: 90vh;
+      border: 1px solid lightgray;
+    }
+    #controls {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+      text-align: center;
+    }
+    #timer {
+      text-align: center;
+      font-size: 1em;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button onclick="startSimulation(); this.parentElement.style.display='none';">Go</button>
+  </div>
+
+  <div id="timer"></div>
+  <div id="network"></div>
+
+  <script>
+    let nodeSet, edgeSet, connections, intervalId, timerInterval;
+
+    function startSimulation() {
+      clearInterval(intervalId);
+      clearInterval(timerInterval);
+
+      const nodeCount = 200;
+      const nodes = [];
+      const edges = [];
+      connections = new Map();
+
+      for (let i = 0; i < nodeCount; i++) {
+        nodes.push({ id: i, label: `User ${i}`, color: 'lightgray' });
+        connections.set(i, []);
+      }
+
+      for (let i = 0; i < nodeCount; i++) {
+        const edgeCount = Math.floor(Math.random() * 3) + 1;
+        const targets = new Set();
+        while (targets.size < edgeCount) {
+          const target = Math.floor(Math.random() * nodeCount);
+          if (target !== i && !targets.has(target)) {
+            targets.add(target);
+            edges.push({ from: i, to: target });
+            connections.get(i).push(target);
+            connections.get(target).push(i);
+          }
+        }
+      }
+
+      nodeSet = new vis.DataSet(nodes);
+      edgeSet = new vis.DataSet(edges);
+
+      const data = { nodes: nodeSet, edges: edgeSet };
+      const options = {
+        nodes: { shape: 'dot', size: 10, font: { size: 14 }, borderWidth: 2 },
+        edges: { width: 1, color: { color: '#aaa' } },
+
+        physics: {
+          stabilization: false,
+          barnesHut: {
+            gravitationalConstant: -30000,
+            springLength: 100
+          }
+        }
+
+      };
+
+      const container = document.getElementById('network');
+      new vis.Network(container, data, options);
+
+      const initialFake = Math.floor(Math.random() * nodeCount);
+      let initialReal = initialFake;
+      while (initialReal === initialFake) {
+        initialReal = Math.floor(Math.random() * nodeCount);
+      }
+      nodeSet.update([{ id: initialFake, color: 'red' }, { id: initialReal, color: 'blue' }]);
+
+      const timerElement = document.getElementById('timer');
+      timerElement.textContent = 'Elapsed: 0 days, 0 hours, and 0 minutes';
+      let elapsed = 0;
+
+      timerInterval = setInterval(() => {
+        elapsed += 0.25;
+        const totalMinutes = Math.floor(elapsed * 60);
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minutes = totalMinutes % 60;
+        timerElement.textContent = `Elapsed: ${days} days, ${hours} hours, and ${minutes} minutes`;
+      }, 250);
+
+      intervalId = setInterval(() => {
+        const currentNodes = nodeSet.get();
+        const newStates = new Map();
+
+        for (const node of currentNodes) {
+          const neighbors = connections.get(node.id);
+          let redInfluence = false;
+          let blueInfluence = false;
+
+          for (const n of neighbors) {
+            const neighbor = nodeSet.get(n);
+            if (neighbor.color === 'red') redInfluence = true;
+            if (neighbor.color === 'blue') blueInfluence = true;
+          }
+
+          if (node.color === 'lightgray') {
+            if (redInfluence && !blueInfluence && Math.random() < 0.6) {
+              newStates.set(node.id, 'red');
+            } else if (blueInfluence && !redInfluence && Math.random() < 0.1) {
+              newStates.set(node.id, 'blue');
+            } else if (redInfluence && blueInfluence) {
+              newStates.set(node.id, Math.random() < 0.75 ? 'blue' : 'red');
+            }
+          }
+        }
+
+        for (const [id, color] of newStates.entries()) {
+          nodeSet.update({ id, color });
+        }
+
+        const allKnown = nodeSet.get().filter(n => n.color !== 'lightgray').length;
+        if (allKnown === nodeSet.length) {
+          clearInterval(intervalId);
+          clearInterval(timerInterval);
+        }
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
+
